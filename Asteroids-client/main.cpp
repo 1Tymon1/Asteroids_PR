@@ -18,6 +18,7 @@
 #include "Projectile.hpp"
 #include "Spaceship.h"
 #include "Asteroid.h"
+#include <iostream>
 
 using namespace sf;
 
@@ -87,9 +88,14 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
     int total_bytes_received = 0;
     char readBuffer[50];
     sendFrameEntity frame;
+
+    std::vector<int> deletedShips;
+    std::vector<int> deletedProjectiles;
+    std::vector<int> deletedAsteroids;
+
     while (isWorking) {
         total_bytes_received = 0;
-        printf("4 - start ");
+        //printf("4 - start ");
         bytes_received = recv(connection, readBuffer, 1, 0);    //wczytywanie 1 bajtu do odczytania headera
         if (bytes_received <= 0) {
             // handle errors or connection closed
@@ -100,7 +106,7 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
         }
         total_bytes_received += bytes_received;
         unsigned char header = readBuffer[0];   //pobieranie headera
-        printf("4 - end ");
+        //printf("4 - end ");
 
         if (header == PLAYER_CODE || header == PROJECTILE_CODE) { //ramka gracza, asteroid i pocisków
             // Loop to ensure we receive the complete frame
@@ -130,6 +136,13 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
                     }
                 }
                 if (isNewShip) {
+                    for (int i = 0; i < deletedShips.size(); i++) {
+                        if (f->ID == deletedShips[i]) {
+                            isNewShip = false;
+                        }
+                    }
+                }
+                if (isNewShip) {
                     ships.push_back(Spaceship(f->posX, f->posY, false, f->ID));
                 }
                 coopMutex.unlock();
@@ -143,6 +156,13 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
                         projectiles[i].position.x = f->posX;
                         projectiles[i].position.y = f->posY;
 
+                    }
+                }
+                if (isNewProjectile) {
+                    for (int i = 0; i < deletedProjectiles.size(); i++) {
+                        if (f->ID == deletedProjectiles[i]) {
+                            isNewProjectile = false;
+                        }
                     }
                 }
                 if (isNewProjectile) {
@@ -185,6 +205,13 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
                 }
             }
             if (isNewAsteroid) {
+                for (int i = 0; i < deletedAsteroids.size(); i++) {
+                    if (f->ID == deletedAsteroids[i]) {
+                        isNewAsteroid = false;
+                    }
+                }
+            }
+            if (isNewAsteroid) {
                 asteroids.push_back(Asteroid(f->posX, f->posY, f->speedX, f->speedY, f->ID, f->size));
             }
 
@@ -211,6 +238,8 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
                 for (auto i = ships.begin(); i != ships.end(); i++) {
                     if (f->ID == i->id) {
                         ships.erase(i);
+                        int c = f->ID;
+                        deletedShips.push_back(c);
                         break;
                     }
                 }
@@ -221,6 +250,8 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
                 for (auto i = projectiles.begin(); i != projectiles.end(); i++) {
                     if (f->ID == i->id) {
                         projectiles.erase(i);
+                        int c = f->ID;
+                        deletedProjectiles.push_back(c);
                         break;
                     }
                 }
@@ -231,6 +262,8 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
                 for (auto i = asteroids.begin(); i != asteroids.end(); i++) {
                     if (f->ID == i->id) {
                         asteroids.erase(i);
+                        int c = f->ID;
+                        deletedAsteroids.push_back(c);
                         break;
                     }
                 }
@@ -390,9 +423,24 @@ int main() {
         printf("WSAStartup failed: %d\n", iResult);
         return 1;
     }
+    int choice;
+    std::cout << "1 - localhost\n2 - podaj adres ip\n";
+    std::cin >> choice;
+    while (choice != 1 && choice != 2) {
+        std::cout << "1 - localhost\n2 - podaj adres ip" << std::endl;
+        std::cin >> choice;
+    }
+    std::string ip;
+    if (choice == 1) {
+        ip = "localhost";
+    }
+    else {
+        std::cout << "podaj adres ip" << std::endl;
+        std::cin >> ip;
+    }
 
     //obtaining local ip adress
-    struct hostent* host = gethostbyname("localhost");
+    struct hostent* host = gethostbyname(ip.data());
     if (host == NULL) {
         return 45;
     }

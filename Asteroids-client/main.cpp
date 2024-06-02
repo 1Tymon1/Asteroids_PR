@@ -5,6 +5,7 @@
 #define PROJECTILE_CODE 0b10000010
 #define ASTEROID_CODE   0b10000100
 #define DELETUS_CODE    0b10001000
+#define SCORE_CODE      0b10101001
 
 #include <SFML/Graphics.hpp>
 #include <cmath>
@@ -72,8 +73,15 @@ typedef struct _deletus {
 } deletus;
 #pragma pack(pop)
 
+#pragma pack(push,1)
+typedef struct _sendScoreFrame {
+    unsigned char header;     //kod okreslajacy co to za rodzaj ramki (inne niz 0b1000001 oraz 0b10000010)
+    int score;
+} sendScoreFrame;
+#pragma pack(pop)
+
 Mutex coopMutex;
-Mutex connectedMutex;
+Mutex ScoreMutex;
 Mutex projectileMutex;
 Mutex asteroidMutex;
 
@@ -83,7 +91,7 @@ Mutex asteroidMutex;
 #define PERIODIC_PACKET_SEND
 #define WAIT_TIME 0.5
 
-void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projectile>& projectiles, std::vector<Asteroid>& asteroids, bool& isWorking, bool& isAlive) {
+void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projectile>& projectiles, std::vector<Asteroid>& asteroids, bool& isWorking, bool& isAlive, int& score) {
     int bytes_received = 0;
     int total_bytes_received = 0;
     char readBuffer[50];
@@ -275,6 +283,28 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
                
             }
         }
+        else if (header == SCORE_CODE) {
+            printf("scorus\n");
+            while (total_bytes_received < sizeof(sendScoreFrame)) {
+                printf("scorys2: %d\n", total_bytes_received);
+                bytes_received = recv(connection, readBuffer + total_bytes_received, sizeof(sendScoreFrame) - total_bytes_received, 0);
+                if (bytes_received <= 0) {
+                    // handle errors or connection closed
+                    perror("recv failed");
+                    _close(connection);
+                    return;
+                }
+                total_bytes_received += bytes_received;
+                printf("scorus3: %d\n", total_bytes_received);
+            }
+            // Now we have a complete frame in readBuffer
+            sendScoreFrame* f = (sendScoreFrame*)readBuffer;
+            ScoreMutex.lock();
+            score = f->score;
+            ScoreMutex.unlock();
+        }
+
+
         /*else {//inna ramka niz gracz i asteroida
             while (total_bytes_received < sizeof(sendFrameSerwerInfo)) {
                 bytes_received = recv(sockfd, readBuffer + total_bytes_received, sizeof(sendFrameSerwerInfo) - total_bytes_received, 0);
@@ -289,6 +319,17 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
         }*/
     }
     
+}
+
+void displayScore(RenderWindow& window, int score, const Font& font) {
+    Text scoreText;
+    scoreText.setFont(font);
+    scoreText.setString("Score: " + std::to_string(score));
+    scoreText.setCharacterSize(24); // Set the text size
+    scoreText.setFillColor(Color::White); // Set the text color
+    scoreText.setPosition(10, 10); // Set the position in the top-left corner
+
+    window.draw(scoreText);
 }
 
 void GameplayLoop(int connection) {
@@ -322,10 +363,14 @@ void GameplayLoop(int connection) {
     //zegar bo potem musi byæ delta time ¿eby dzia³a³o jak ma
     Clock clock;
 
-    //data to send
-    unsigned char data[DATA_PACKET_SIZE];
-    unsigned char fakeData[DATA_PACKET_SIZE];
-    std::thread cum{ receive, connection, std::ref(ships), std::ref(projectiles), std::ref(asteroids), std::ref(isWorking), std::ref(isAlive)};
+    Font font;
+    if (!font.loadFromFile("arial.ttf")) {
+        // Handle font loading error
+        return;
+    }
+
+    int score = 0;
+    std::thread cum{ receive, connection, std::ref(ships), std::ref(projectiles), std::ref(asteroids), std::ref(isWorking), std::ref(isAlive), std::ref(score)};
 
     while (window.isOpen()) {
 
@@ -408,6 +453,9 @@ void GameplayLoop(int connection) {
             asteroids[i].update(deltaTime, desktopMode.width, desktopMode.height, window);
         }
         asteroidMutex.unlock();
+        ScoreMutex.lock();
+        displayScore(window, score, font);
+        ScoreMutex.unlock();
 
         window.display();
     }

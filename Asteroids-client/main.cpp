@@ -372,6 +372,7 @@ void GameplayLoop(int connection) {
     Font font;
     if (!font.loadFromFile("arial.ttf")) {
         // Handle font loading error
+        printf("no font!!!");
         return;
     }
 

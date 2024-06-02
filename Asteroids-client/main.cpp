@@ -284,9 +284,9 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
             }
         }
         else if (header == SCORE_CODE) {
-            printf("scorus\n");
+            //printf("scorus\n");
             while (total_bytes_received < sizeof(sendScoreFrame)) {
-                printf("scorys2: %d\n", total_bytes_received);
+                //printf("scorys2: %d\n", total_bytes_received);
                 bytes_received = recv(connection, readBuffer + total_bytes_received, sizeof(sendScoreFrame) - total_bytes_received, 0);
                 if (bytes_received <= 0) {
                     // handle errors or connection closed
@@ -295,7 +295,7 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
                     return;
                 }
                 total_bytes_received += bytes_received;
-                printf("scorus3: %d\n", total_bytes_received);
+                //printf("scorus3: %d\n", total_bytes_received);
             }
             // Now we have a complete frame in readBuffer
             sendScoreFrame* f = (sendScoreFrame*)readBuffer;
@@ -346,6 +346,11 @@ void GameplayLoop(int connection) {
     double maxSpeed = 1 * desktopMode.width;
     double shotCooldown = 0.25;
     double shotTimer = 0;
+
+    double invincibilityTime = 5.0;
+    double hideTime = 0.1;
+    double hideTimer = 0.0;
+    bool hidden = false;
 
     std::vector<Spaceship> ships;
     std::vector<Projectile> projectiles;
@@ -438,6 +443,14 @@ void GameplayLoop(int connection) {
 
         // Update spaceship
         if(isAlive) spaceship.update(deltaTime, desktopMode.width, desktopMode.height, window);
+
+        if (invincibilityTime >= 0) {
+            invincibilityTime -= deltaTime;
+            if (hideTimer >= hideTimer) hidden = !hidden;
+            hideTimer += deltaTime;
+            if (hidden) window.clear();
+        }
+
         projectileMutex.lock();
         for (int i = 0; i < projectiles.size(); i++) {
             projectiles[i].update(deltaTime, desktopMode.width, desktopMode.height, window);

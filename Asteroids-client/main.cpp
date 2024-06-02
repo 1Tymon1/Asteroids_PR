@@ -336,6 +336,7 @@ void GameplayLoop(int connection) {
     //test2323
     VideoMode desktopMode = VideoMode::getDesktopMode(); //wyci¹gamy rozmiar monitora
     RenderWindow window(desktopMode, "Asteroids Clone", Style::Default); //tworzymy okno gry
+    window.setFramerateLimit(60);
 
     //inicjalizacja statku, oraz zmiennych odpowiadaj¹cych za poruszanie.
     initSpaceshipTexture();

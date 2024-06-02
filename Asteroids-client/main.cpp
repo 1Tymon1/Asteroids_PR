@@ -42,7 +42,7 @@ typedef struct {
 #pragma pack(push,1)
 typedef struct _sendFrameEntity {
     unsigned char header;     //kod okreslajacy co to za rodzaj ramki (0b1000001 - gracz, 0b10000010 - pocisk)
-    short ID;
+    unsigned int ID;
     float posX;
     float posY;
     float speedX;
@@ -54,7 +54,7 @@ typedef struct _sendFrameEntity {
 #pragma pack(push,1)
 typedef struct _asteroidFrame {
     unsigned char header;     //kod okreslajacy co to za rodzaj ramki (0b10000100 - asteroida)
-    short ID;
+    unsigned int ID;
     float posX;
     float posY;
     float speedX;
@@ -68,7 +68,7 @@ typedef struct _asteroidFrame {
 typedef struct _deletus {
     unsigned char header;       //kod okreslajacy co to za rodzaj ramki (inne niz 0b1000001 oraz 0b10001000)
     unsigned char toDelete;     //1- delete player 2- delete projectile 3- delete asteroid
-    unsigned char ID;           //id of element to delete
+    unsigned int ID;           //id of element to delete
 } deletus;
 #pragma pack(pop)
 
@@ -269,7 +269,7 @@ void receive(int connection, std::vector<Spaceship>& ships, std::vector<Projecti
                 }
                 asteroidMutex.unlock();
                 break;
-            case 4:
+            case 4: //yorself
                 isAlive = false;
                 break;
                
@@ -303,7 +303,7 @@ void GameplayLoop(int connection) {
     double rotationSpeed = 100;
     double acceleration = 0.1 * desktopMode.width;
     double maxSpeed = 1 * desktopMode.width;
-    double shotCooldown = 0.5;
+    double shotCooldown = 0.25;
     double shotTimer = 0;
 
     std::vector<Spaceship> ships;
